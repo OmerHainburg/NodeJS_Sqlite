@@ -9,6 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "sqlite": "^4.0.25"
+    "knex": "^0.95.15",
+    "sqlite": "^4.0.25",
+    "sqlite3": "^5.0.2",
+    "util": "^0.12.4",
+    "utils": "^0.3.1"
   }
 }

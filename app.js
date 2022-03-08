@@ -1,26 +1,45 @@
-const { printQueryResults } = require('./utils');
+const { calculateAverages, addClimateRowToObject, logNodeError, printQueryResults } = require('./utils');
+const sqlite = require('sqlite3');
 
-const sqlite3 = require('sqlite3');
+const db = new sqlite.Database('./db.sqlite');
 
-const db = new sqlite3.Database('./db.sqlite');
+const temperaturesByYear = {};
 
-const getAverageTemperatureForYear = year => {
-  if (!year) {
-    console.log('You must provide a year!');
-    return;
-  }
-  db.get('SELECT year, AVG(temp_avg) as average_temperature from TemperatureData WHERE year = $year',
-   { $year: year },
-   (err, row) => {
-    if (err) {
-      throw err;
+// start by wrapping all the code below in a serialize method
+db.serialize(() => { 
+  db.run('DROP TABLE IF EXISTS Average', error => {
+    if (error) {
+      throw error;
     }
-    printQueryResults(row);
   })
-}
+  db.run('CREATE TABLE Average (id INTEGER PRIMARY KEY, year INTEGER NOT NULL, temperature REAL NOT NULL)', logNodeError);
+  db.each('SELECT * FROM TemperatureData',
+    (error, row) => {
+      if (error) {
+        throw error;
+      }
+      addClimateRowToObject(row, temperaturesByYear);
+    }, 
+    error => {
+      if (error) {
+        throw error;
+      }
+      const averageTemperatureByYear = calculateAverages(temperaturesByYear);
+      averageTemperatureByYear.forEach(row => {
+        db.run('INSERT INTO Average (year, temperature) VALUES ($year, $temp)', {
+          $year: row.year,
+          $temp: row.temperature
+        }, err => {
+          if (err) {
+            console.log(err);
+          }
+        });
+      });
+    db.all('SELECT * FROM Average',
+    (error, row) => {
+      printQueryResults(row)
+    })
+    });
+  });
+  
 
-// Call this function with a few years to view the average temperature that year
-// This database has values from 1851 - 2004
-getAverageTemperatureForYear(1851)
-getAverageTemperatureForYear(1950)
-getAverageTemperatureForYear(2004)
